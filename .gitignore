@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+*.part
+*.log
+runtime.local.json
+.DS_Store
+Thumbs.db

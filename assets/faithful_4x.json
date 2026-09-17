@@ -1,0 +1,31 @@
+{
+  "1": {
+    "class_type": "LoadImage",
+    "inputs": {"image": "cell_high_solution/input.png"}
+  },
+  "2": {
+    "class_type": "UpscaleModelLoader",
+    "inputs": {"model_name": "RealESRGAN_x4plus.safetensors"}
+  },
+  "3": {
+    "class_type": "ImageUpscaleWithModel",
+    "inputs": {"upscale_model": ["2", 0], "image": ["1", 0]}
+  },
+  "5": {
+    "class_type": "ResizeImageMaskNode",
+    "inputs": {
+      "input": ["1", 1],
+      "resize_type": "scale by multiplier",
+      "resize_type.multiplier": 4,
+      "scale_method": "lanczos"
+    }
+  },
+  "6": {
+    "class_type": "JoinImageWithAlpha",
+    "inputs": {"image": ["3", 0], "alpha": ["5", 0]}
+  },
+  "4": {
+    "class_type": "SaveImage",
+    "inputs": {"filename_prefix": "cell_high_solution/faithful", "images": ["6", 0]}
+  }
+}

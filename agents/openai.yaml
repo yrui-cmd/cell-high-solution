@@ -1,0 +1,4 @@
+interface:
+  display_name: "cell_high_solution"
+  short_description: "Upscale one blurry image into a sharp 4x PNG"
+  default_prompt: "Use $cell-high-solution to turn this attached blurry image into one sharp high-definition PNG."

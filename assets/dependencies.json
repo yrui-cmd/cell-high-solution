@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "verified_on": "2026-09-17",
+  "notes": [
+    "The core tier is the recommended fast install and is sufficient for auto/faithful output.",
+    "No custom nodes or separate pip packages are required; the pinned ComfyUI portable includes Python, PyTorch, Pillow, NumPy, and all workflow nodes.",
+    "Model URLs are official Black Forest Labs or Comfy-Org Hugging Face sources and are ungated.",
+    "The FLUX.2 VAE is Apache-2.0 upstream, although the Comfy-Org flux2-dev repository metadata carries a broader non-commercial repository label."
+  ],
+  "runtime": {
+    "name": "ComfyUI Windows Portable NVIDIA",
+    "version": "0.36.0",
+    "tier": "core",
+    "source_page": "https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.36.0",
+    "documentation": "https://github.com/Comfy-Org/ComfyUI/blob/master/README.md",
+    "download_url": "https://github.com/Comfy-Org/ComfyUI/releases/download/v0.36.0/ComfyUI_windows_portable_nvidia.7z",
+    "cu126_download_url": "https://github.com/Comfy-Org/ComfyUI/releases/download/v0.36.0/ComfyUI_windows_portable_nvidia_cu126.7z",
+    "size": 1917442353,
+    "sha256": "c3c60192840f8b68c9a47cf3e8161ecb108e5ffdf5ea236c1c72a402e442695d",
+    "cu126_size": 1859361599,
+    "cu126_sha256": "0665ae866a1f3e24a9a582d90cc70f8292569e05bd790fe1cd07afab23a4e47b",
+    "archive_root": "ComfyUI_windows_portable"
+  },
+  "extractor_fallback": {
+    "name": "7-Zip reduced standalone console",
+    "source_page": "https://github.com/ip7z/7zip/releases/tag/26.03",
+    "download_url": "https://github.com/ip7z/7zip/releases/download/26.03/7zr.exe",
+    "size": 602624,
+    "sha256": "ad4c82fadcbdf93c03b4fc440f300509c7d60c5c2f4d183e35d9d70d6957037d"
+  },
+  "models": [
+    {
+      "name": "RealESRGAN_x4plus.safetensors",
+      "tier": "core",
+      "revision": "ea19b4cd14f85a5b914eee8aa7ff77bc371039a0",
+      "source_page": "https://huggingface.co/Comfy-Org/Real-ESRGAN_repackaged/blob/main/RealESRGAN_x4plus.safetensors",
+      "download_url": "https://huggingface.co/Comfy-Org/Real-ESRGAN_repackaged/resolve/ea19b4cd14f85a5b914eee8aa7ff77bc371039a0/RealESRGAN_x4plus.safetensors?download=true",
+      "relative_path": "models/upscale_models/RealESRGAN_x4plus.safetensors",
+      "size": 66857836,
+      "sha256": "37f9a931c215f040aa6d50f711f2cb115f713c46df1d0d6469a8bd7bfe9a60bb",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "name": "seedvr2_3b_int8_convrot.safetensors",
+      "tier": "restore",
+      "revision": "673340c8a66db62b84e4099def7d01d337ae12dc",
+      "source_page": "https://huggingface.co/Comfy-Org/SeedVR2/blob/main/diffusion_models/seedvr2_3b_int8_convrot.safetensors",
+      "download_url": "https://huggingface.co/Comfy-Org/SeedVR2/resolve/673340c8a66db62b84e4099def7d01d337ae12dc/diffusion_models/seedvr2_3b_int8_convrot.safetensors?download=true",
+      "relative_path": "models/diffusion_models/seedvr2_3b_int8_convrot.safetensors",
+      "size": 3458259704,
+      "sha256": "c3dec8bcc5916843a8a858572970597462e1f2dc598d6dfd818f6cd40f53a157",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "seedvr2_ema_vae_fp16.safetensors",
+      "tier": "restore",
+      "revision": "673340c8a66db62b84e4099def7d01d337ae12dc",
+      "source_page": "https://huggingface.co/Comfy-Org/SeedVR2/blob/main/vae/seedvr2_ema_vae_fp16.safetensors",
+      "download_url": "https://huggingface.co/Comfy-Org/SeedVR2/resolve/673340c8a66db62b84e4099def7d01d337ae12dc/vae/seedvr2_ema_vae_fp16.safetensors?download=true",
+      "relative_path": "models/vae/seedvr2_ema_vae_fp16.safetensors",
+      "size": 501324814,
+      "sha256": "20678548f420d98d26f11442d3528f8b8c94e57ee046ef93dbb7633da8612ca1",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "flux-2-klein-4b-fp8.safetensors",
+      "tier": "redraw",
+      "revision": "5b4408e59397a4a37ccb46afe426d8ed86379441",
+      "source_page": "https://huggingface.co/black-forest-labs/FLUX.2-klein-4b-fp8/blob/main/flux-2-klein-4b-fp8.safetensors",
+      "download_url": "https://huggingface.co/black-forest-labs/FLUX.2-klein-4b-fp8/resolve/5b4408e59397a4a37ccb46afe426d8ed86379441/flux-2-klein-4b-fp8.safetensors?download=true",
+      "relative_path": "models/diffusion_models/flux-2-klein-4b-fp8.safetensors",
+      "size": 4070624520,
+      "sha256": "97ed34fe0567e436200f2faee3939b88f2b5d99f8af2a4dc16532c4245c0ccb6",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "qwen_3_4b.safetensors",
+      "tier": "redraw",
+      "revision": "5f526678002e43af5551dadb73ce2e8c91b43afe",
+      "source_page": "https://huggingface.co/Comfy-Org/vae-text-encorder-for-flux-klein-4b/blob/main/split_files/text_encoders/qwen_3_4b.safetensors",
+      "download_url": "https://huggingface.co/Comfy-Org/vae-text-encorder-for-flux-klein-4b/resolve/5f526678002e43af5551dadb73ce2e8c91b43afe/split_files/text_encoders/qwen_3_4b.safetensors?download=true",
+      "relative_path": "models/text_encoders/qwen_3_4b.safetensors",
+      "size": 8044982048,
+      "sha256": "6c671498573ac2f7a5501502ccce8d2b08ea6ca2f661c458e708f36b36edfc5a",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "flux2-vae.safetensors",
+      "tier": "redraw",
+      "revision": "ab9055628ea245000e610f2aa2c96f4746093546",
+      "source_page": "https://huggingface.co/Comfy-Org/flux2-dev/blob/main/split_files/vae/flux2-vae.safetensors",
+      "download_url": "https://huggingface.co/Comfy-Org/flux2-dev/resolve/ab9055628ea245000e610f2aa2c96f4746093546/split_files/vae/flux2-vae.safetensors?download=true",
+      "relative_path": "models/vae/flux2-vae.safetensors",
+      "size": 336213556,
+      "sha256": "d64f3a68e1cc4f9f4e29b6e0da38a0204fe9a49f2d4053f0ec1fa1ca02f9c4b5",
+      "license": "Apache-2.0 upstream; see note"
+    }
+  ]
+}

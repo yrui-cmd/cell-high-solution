@@ -1,0 +1,92 @@
+{
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": {"filename_prefix": "cell_high_solution/redraw", "images": ["142", 0]}
+  },
+  "76": {
+    "class_type": "LoadImage",
+    "inputs": {"image": "cell_high_solution/input.png"}
+  },
+  "124": {
+    "class_type": "KSamplerSelect",
+    "inputs": {"sampler_name": "euler"}
+  },
+  "125": {
+    "class_type": "UNETLoader",
+    "inputs": {"unet_name": "flux-2-klein-4b-fp8.safetensors", "weight_dtype": "default"}
+  },
+  "126": {
+    "class_type": "CLIPLoader",
+    "inputs": {"clip_name": "qwen_3_4b.safetensors", "type": "flux2", "device": "default"}
+  },
+  "127": {
+    "class_type": "VAELoader",
+    "inputs": {"vae_name": "flux2-vae.safetensors"}
+  },
+  "128": {
+    "class_type": "EmptyFlux2LatentImage",
+    "inputs": {"width": ["134", 0], "height": ["134", 1], "batch_size": 1}
+  },
+  "129": {
+    "class_type": "ImageScaleToTotalPixels",
+    "inputs": {"upscale_method": "lanczos", "megapixels": 1, "resolution_steps": 1, "image": ["76", 0]}
+  },
+  "130": {
+    "class_type": "Flux2Scheduler",
+    "inputs": {"steps": 4, "width": ["134", 0], "height": ["134", 1]}
+  },
+  "131": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {"text": "Restore this image at high resolution.", "clip": ["126", 0]}
+  },
+  "132": {
+    "class_type": "ConditioningZeroOut",
+    "inputs": {"conditioning": ["131", 0]}
+  },
+  "133": {
+    "class_type": "ReferenceLatent",
+    "inputs": {"conditioning": ["132", 0], "latent": ["136", 0]}
+  },
+  "134": {
+    "class_type": "GetImageSize",
+    "inputs": {"image": ["129", 0]}
+  },
+  "135": {
+    "class_type": "ReferenceLatent",
+    "inputs": {"conditioning": ["131", 0], "latent": ["136", 0]}
+  },
+  "136": {
+    "class_type": "VAEEncode",
+    "inputs": {"pixels": ["129", 0], "vae": ["127", 0]}
+  },
+  "137": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": ["139", 0],
+      "guider": ["140", 0],
+      "sampler": ["124", 0],
+      "sigmas": ["130", 0],
+      "latent_image": ["128", 0]
+    }
+  },
+  "138": {
+    "class_type": "VAEDecode",
+    "inputs": {"samples": ["137", 0], "vae": ["127", 0]}
+  },
+  "139": {
+    "class_type": "RandomNoise",
+    "inputs": {"noise_seed": 1}
+  },
+  "140": {
+    "class_type": "CFGGuider",
+    "inputs": {"cfg": 1, "model": ["125", 0], "positive": ["135", 0], "negative": ["133", 0]}
+  },
+  "141": {
+    "class_type": "UpscaleModelLoader",
+    "inputs": {"model_name": "RealESRGAN_x4plus.safetensors"}
+  },
+  "142": {
+    "class_type": "ImageUpscaleWithModel",
+    "inputs": {"upscale_model": ["141", 0], "image": ["138", 0]}
+  }
+}

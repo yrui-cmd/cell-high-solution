@@ -1,0 +1,84 @@
+{
+  "1": {
+    "class_type": "LoadImage",
+    "inputs": {"image": "cell_high_solution/input.png"}
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": {"filename_prefix": "cell_high_solution/restore", "images": ["81", 0]}
+  },
+  "73": {
+    "class_type": "VAEEncodeTiled",
+    "inputs": {
+      "tile_size": 512,
+      "overlap": 128,
+      "temporal_size": 4096,
+      "temporal_overlap": 8,
+      "pixels": ["80", 0],
+      "vae": ["75", 0]
+    }
+  },
+  "74": {
+    "class_type": "JoinImageWithAlpha",
+    "inputs": {"image": ["1", 0], "alpha": ["1", 1]}
+  },
+  "75": {
+    "class_type": "VAELoader",
+    "inputs": {"vae_name": "seedvr2_ema_vae_fp16.safetensors"}
+  },
+  "76": {
+    "class_type": "UNETLoader",
+    "inputs": {"unet_name": "seedvr2_3b_int8_convrot.safetensors", "weight_dtype": "default"}
+  },
+  "77": {
+    "class_type": "KSampler",
+    "inputs": {
+      "seed": 1,
+      "steps": 1,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": ["76", 0],
+      "positive": ["82", 0],
+      "negative": ["82", 1],
+      "latent_image": ["73", 0]
+    }
+  },
+  "78": {
+    "class_type": "VAEDecodeTiled",
+    "inputs": {
+      "tile_size": 512,
+      "overlap": 128,
+      "temporal_size": 4096,
+      "temporal_overlap": 8,
+      "samples": ["77", 0],
+      "vae": ["75", 0]
+    }
+  },
+  "79": {
+    "class_type": "ResizeImageMaskNode",
+    "inputs": {
+      "resize_type": "scale by multiplier",
+      "resize_type.multiplier": 4,
+      "scale_method": "lanczos",
+      "input": ["74", 0]
+    }
+  },
+  "80": {
+    "class_type": "SeedVR2Preprocess",
+    "inputs": {"resized_images": ["79", 0]}
+  },
+  "81": {
+    "class_type": "SeedVR2PostProcessing",
+    "inputs": {
+      "color_correction_method": "lab",
+      "images": ["78", 0],
+      "original_resized_images": ["79", 0]
+    }
+  },
+  "82": {
+    "class_type": "SeedVR2Conditioning",
+    "inputs": {"model": ["76", 0], "vae_conditioning": ["73", 0]}
+  }
+}
