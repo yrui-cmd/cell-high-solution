@@ -60,6 +60,27 @@ def safe_stem(value: str) -> str:
     return cleaned[:80] or "image"
 
 
+def load_redraw_prompt_file(value: str) -> tuple[str, str, str]:
+    path = Path(value).expanduser().resolve()
+    if not path.is_file():
+        raise FileNotFoundError(path)
+    if path.stat().st_size > 64 * 1024:
+        raise ValueError("prompt file exceeds the 64 KiB text-only limit")
+    try:
+        guidance = path.read_text(encoding="utf-8-sig").strip()
+    except UnicodeDecodeError as error:
+        raise ValueError("prompt file must be valid UTF-8 text") from error
+    if not guidance:
+        raise ValueError("prompt file is empty")
+    prompt = (
+        REDRAW_PROMPT
+        + " Visual guidance only; no reference image pixels are supplied: "
+        + guidance
+    )
+    digest = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+    return prompt, str(path), digest
+
+
 def host_url() -> str:
     value = os.environ.get("COMFY_HOST", "127.0.0.1:8188").rstrip("/")
     return value if value.startswith(("http://", "https://")) else f"http://{value}"
@@ -334,7 +355,15 @@ def load_workflow(mode: str) -> dict[str, Any]:
     return json.loads((ASSET_DIR / filename).read_text(encoding="utf-8"))
 
 
-def configure_workflow(workflow: dict[str, Any], mode: str, input_name: str, prefix: str, seed: int, redraw_alpha: bool) -> None:
+def configure_workflow(
+    workflow: dict[str, Any],
+    mode: str,
+    input_name: str,
+    prefix: str,
+    seed: int,
+    redraw_alpha: bool,
+    redraw_prompt: str | None = None,
+) -> None:
     if mode == "faithful":
         workflow["1"]["inputs"]["image"] = input_name
         workflow["4"]["inputs"]["filename_prefix"] = prefix
@@ -346,7 +375,7 @@ def configure_workflow(workflow: dict[str, Any], mode: str, input_name: str, pre
         workflow["76"]["inputs"]["image"] = input_name
         workflow["9"]["inputs"]["filename_prefix"] = prefix
         workflow["139"]["inputs"]["noise_seed"] = seed
-        prompt = REDRAW_PROMPT
+        prompt = redraw_prompt or REDRAW_PROMPT
         if redraw_alpha:
             prompt += " Keep the isolated object on a perfectly uniform pure white background."
         workflow["131"]["inputs"]["text"] = prompt
@@ -424,23 +453,56 @@ def quality_check(path: Path, original_size: tuple[int, int], require_alpha: boo
         raise RuntimeError("output appears blank or nearly uniform")
     if exact_size and (width, height) != expected:
         raise RuntimeError(f"unexpected output size {(width, height)}; expected {expected}")
-    if not exact_size and (width < original_size[0] * 3 or height < original_size[1] * 3):
-        raise RuntimeError(f"output is not sufficiently enlarged: {(width, height)}")
+    if not exact_size:
+        source_aspect = original_size[0] / original_size[1]
+        output_aspect = width / height
+        aspect_error = abs(output_aspect / source_aspect - 1.0)
+        if width * height < 12_000_000 or max(width, height) < 4_000:
+            raise RuntimeError(
+                "semantic redraw did not reach the expected post-upscale HD canvas: "
+                f"{(width, height)}"
+            )
+        if aspect_error > 0.03:
+            raise RuntimeError(
+                "semantic redraw changed the source aspect ratio too much: "
+                f"source={source_aspect:.5f}, output={output_aspect:.5f}"
+            )
     if require_alpha and not has_alpha:
         raise RuntimeError("source transparency was not preserved")
     return {"width": width, "height": height, "mode": mode, "pixel_std": round(deviation, 3), "has_transparency": bool(has_alpha)}
 
 
-def run_once(source: Path, image: Image.Image, mode: str, digest: str, seed: int, output_dir: Path, timeout: float) -> tuple[Path, dict[str, Any]]:
+def run_once(
+    source: Path,
+    image: Image.Image,
+    mode: str,
+    digest: str,
+    seed: int,
+    output_dir: Path,
+    timeout: float,
+    redraw_prompt: str | None = None,
+) -> tuple[Path, dict[str, Any]]:
     input_name, metadata = prepare_input(source, image, mode, digest)
     workflow = load_workflow(mode)
     prefix = f"cell_high_solution/{safe_stem(source.stem)}_{digest[:12]}_{mode}"
-    configure_workflow(workflow, mode, input_name, prefix, seed, bool(metadata.get("redraw_alpha")))
+    configure_workflow(
+        workflow,
+        mode,
+        input_name,
+        prefix,
+        seed,
+        bool(metadata.get("redraw_alpha")),
+        redraw_prompt,
+    )
     prompt_id = queue_prompt(workflow)
     record = wait_for_result(prompt_id, timeout)
     descriptor = first_output_image(record)
     raw_output = output_dir / f".{safe_stem(source.stem)}_{mode}_raw.png"
-    final_output = output_dir / f"{safe_stem(source.stem)}_hd_{mode}_4x.png"
+    if mode == "redraw" and not metadata.get("redraw_alpha"):
+        output_suffix = "redraw_upscaled"
+    else:
+        output_suffix = f"{mode}_4x"
+    final_output = output_dir / f"{safe_stem(source.stem)}_hd_{output_suffix}.png"
     download_image(descriptor, raw_output)
     try:
         if mode == "redraw" and metadata.get("redraw_alpha"):
@@ -495,17 +557,30 @@ def missing_model_files(mode: str) -> list[str]:
     return [relative for relative in required if not (comfy / relative).is_file()]
 
 
-def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Turn one blurry image into one locally generated HD PNG.")
     parser.add_argument("input", nargs="?", help="absolute or relative input image path")
     parser.add_argument("--mode", choices=("auto", "fast", "faithful", "balanced", "restore", "redraw"), default="auto")
+    parser.add_argument("--prompt-file", help="UTF-8 visual guidance used only with explicit --mode redraw")
     parser.add_argument("--outdir", help="output directory; a unique folder is used by default")
     parser.add_argument("--timeout", type=float, default=900.0)
     parser.add_argument("--no-autostart", action="store_true")
     parser.add_argument("--check", action="store_true", help="check server and required models")
     parser.add_argument("--tier", choices=("core", "restore", "redraw", "all"), default="all", help="dependency tier checked by --check")
     parser.add_argument("--dry-run", action="store_true", help="route only; do not run ComfyUI")
-    args = parser.parse_args()
+    return parser
+
+
+def parse_arguments(argv: list[str] | None = None) -> tuple[argparse.Namespace, argparse.ArgumentParser]:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.prompt_file and (args.mode != "redraw" or args.check):
+        parser.error("--prompt-file requires explicit --mode redraw and cannot be used with --check")
+    return args, parser
+
+
+def main() -> int:
+    args, parser = parse_arguments()
 
     if args.check:
         started = ensure_server(args.no_autostart)
@@ -523,8 +598,31 @@ def main() -> int:
     image = open_normalized(source)
     stats = image_stats(image)
     selected_mode, reason = normalize_mode(args.mode, stats)
+    redraw_prompt: str | None = None
+    prompt_source: str | None = None
+    prompt_sha256: str | None = None
+    if args.mode == "redraw":
+        if args.prompt_file:
+            redraw_prompt, prompt_source, prompt_sha256 = load_redraw_prompt_file(args.prompt_file)
+        else:
+            prompt_source = "builtin"
+            prompt_sha256 = hashlib.sha256(REDRAW_PROMPT.encode("utf-8")).hexdigest()
     if args.dry_run:
-        emit({"ok": True, "dry_run": True, "mode": selected_mode, "reason": reason, "seed": seed, "stats": stats})
+        emit({
+            "ok": True,
+            "dry_run": True,
+            "mode": selected_mode,
+            "reason": reason,
+            "seed": seed,
+            "stats": stats,
+            "prompt_source": prompt_source,
+            "prompt_sha256": prompt_sha256,
+            "scale_contract": (
+                "semantic redraw at 1 MP, then RealESRGAN 4x; not exact source 4x"
+                if selected_mode == "redraw" and not stats["meaningful_alpha"]
+                else "exact source 4x"
+            ),
+        })
         return 0
 
     fallback_from: str | None = None
@@ -548,7 +646,16 @@ def main() -> int:
     server_started = ensure_server(args.no_autostart)
     output_dir = resolve_output_dir(source, args.outdir)
     try:
-        output, qa = run_once(source, image, selected_mode, digest, seed, output_dir, args.timeout)
+        output, qa = run_once(
+            source,
+            image,
+            selected_mode,
+            digest,
+            seed,
+            output_dir,
+            args.timeout,
+            redraw_prompt,
+        )
     except Exception:
         if selected_mode == "faithful":
             raise
@@ -556,11 +663,22 @@ def main() -> int:
         selected_mode = "faithful"
         reason = f"{reason}; generative route failed QA, used faithful fallback"
         output, qa = run_once(source, image, selected_mode, digest, seed, output_dir, args.timeout)
+    if selected_mode == "redraw" and not stats["meaningful_alpha"]:
+        scale_contract = "semantic redraw at 1 MP, then RealESRGAN 4x; not exact source 4x"
+    else:
+        scale_contract = "exact source 4x"
     emit({
         "ok": True, "mode": selected_mode, "reason": reason,
         "output": str(output.resolve()), "size": [qa["width"], qa["height"]],
+        "scale_from_source": [
+            round(qa["width"] / image.width, 4),
+            round(qa["height"] / image.height, 4),
+        ],
+        "scale_contract": scale_contract,
         "elapsed_seconds": round(time.monotonic() - start, 2), "seed": seed,
         "server_autostarted": server_started, "fallback_from": fallback_from,
+        "prompt_source": prompt_source, "prompt_sha256": prompt_sha256,
+        "prompt_applied": selected_mode == "redraw",
         "metrics": stats, "qa": qa,
     })
     return 0

@@ -5,6 +5,7 @@ param(
     [string]$InputPath,
     [ValidateSet('auto', 'fast', 'faithful', 'balanced', 'restore', 'redraw')]
     [string]$Mode = 'auto',
+    [string]$PromptFile = '',
     [string]$OutDir = '',
     [double]$Timeout = 900,
     [switch]$NoAutostart,
@@ -33,13 +34,20 @@ $runner = Join-Path $PSScriptRoot 'enhance.py'
 if (-not (Test-Path -LiteralPath $pythonExe -PathType Leaf)) {
     throw "ComfyUI portable Python was not found at $pythonExe. Run install.ps1 first."
 }
+if ($Check -and $PromptFile) {
+    throw 'PromptFile cannot be used with -Check.'
+}
 
 $arguments = @($runner)
 if ($Check) {
     $arguments += @('--check', '--tier', $Tier)
 } else {
     if (-not $InputPath) { throw 'InputPath is required unless -Check is used.' }
+    if ($PromptFile -and $Mode -ne 'redraw') {
+        throw 'PromptFile is only valid with explicit -Mode redraw.'
+    }
     $arguments += @($InputPath, '--mode', $Mode, '--timeout', [string]$Timeout)
+    if ($PromptFile) { $arguments += @('--prompt-file', $PromptFile) }
     if ($OutDir) { $arguments += @('--outdir', $OutDir) }
     if ($DryRun) { $arguments += '--dry-run' }
 }
